@@ -71,6 +71,7 @@
     }
 
     let actionsFormatter = cell => [
+        `<span class="badge bg-primary" onclick="editConfig('${cell.getRow().getIndex()}')" title="Edit Config">⚙️</span>`,
         `<span class="badge bg-danger" onclick="destroy('${cell.getRow().getIndex()}')" title="Delete">X</span>`,
         `<span class="badge bg-info" onclick="info('${cell.getRow().getIndex()}')" title="Info">i</span>`,
     ].join('&nbsp')
@@ -102,6 +103,12 @@
             error: makeErrorHandler(message => table.alert(message, "error")),
             complete: () => setTimeout(() => table.clearAlert(), 1500),
         })
+    }
+
+    let editConfig = rowIndex => {
+        let row = table.getRow(rowIndex)
+        let nodeId = row.getData().id
+        window.location.href = `admin-node-config.html?id=${nodeId}`
     }
 
     let info = rowIndex => {
@@ -160,6 +167,13 @@
                 widthGrow: 2,
                 validator: ["required"],
                 editable: true,
+            },
+            {
+                title: "Protocol",
+                field: "protocol",
+                widthGrow: 1,
+                editable: false,
+                formatter: cell => cell.getData()['protocol'] || 'shadowsocks'
             },
             {
                 title: "Usage (GB)",

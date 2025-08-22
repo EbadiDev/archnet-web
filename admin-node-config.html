@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Node Configuration - Arch-Manager</title>
+    <link rel="stylesheet" href="assets/third_party/bootstrap-5.3.5/css/bootstrap.min.css">
+    <style>
+        .protocol-specific {
+            display: none;
+        }
+        .protocol-specific.active {
+            display: block;
+        }
+        
+        /* Security settings are hidden by default */
+        #tlsSettings, #realitySettings {
+            display: none;
+        }
+        
+        /* JSON editor styling */
+        .font-monospace {
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Node Configuration</h2>
+        <div>
+            <a href="admin-nodes.html" class="btn btn-outline-secondary">← Back to Nodes</a>
+        </div>
+    </div>
+
+    <div id="loadingMessage" class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading node configuration...</p>
+    </div>
+
+    <form id="nodeConfigForm" style="display: none;">
+        
+        <!-- Core Configuration -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Core Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Core Type</label>
+                        <select name="core_type" class="form-select" required>
+                            <option value="xray">Xray-core</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Protocol Type</label>
+                        <select name="protocol" id="protocolSelect" class="form-select" required>
+                            <option value="">Select Protocol</option>
+                            <option value="shadowsocks">Shadowsocks</option>
+                            <option value="vmess">VMess</option>
+                            <option value="vless">VLESS</option>
+                            <option value="trojan">Trojan</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Server Configuration -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Server Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Server Name</label>
+                        <input type="text" name="server_name" class="form-control" required 
+                               placeholder="e.g., node1.example.com">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Server Address</label>
+                        <input type="text" name="server_address" class="form-control" required 
+                               placeholder="e.g., example.com">
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-4">
+                        <label class="form-label">Server IP</label>
+                        <input type="text" name="server_ip" class="form-control" required 
+                               placeholder="e.g., 192.168.1.10">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Server Port</label>
+                        <input type="text" name="server_port" class="form-control" required 
+                               placeholder="e.g., 443 or 400:450">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Encryption</label>
+                        <select name="encryption" id="encryptionSelect" class="form-select" required>
+                            <option value="">Select Encryption</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Configuration -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Network Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <label class="form-label">Listening IP</label>
+                        <input type="text" name="listening_ip" class="form-control" required 
+                               value="0.0.0.0" placeholder="0.0.0.0">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Listening Port</label>
+                        <input type="number" name="listening_port" class="form-control" required 
+                               min="1" max="65536" placeholder="10001">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Send Through (Optional)</label>
+                        <input type="text" name="send_through" class="form-control" 
+                               placeholder="Source IP for outbound">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Settings (Transport) -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Network Settings</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Transport</label>
+                        <select name="network_settings.transport" id="transportSelect" class="form-select" required>
+                            <option value="tcp">TCP</option>
+                            <option value="http">HTTP</option>
+                            <option value="ws">WebSocket</option>
+                            <option value="grpc">gRPC</option>
+                            <option value="kcp">KCP</option>
+                            <option value="httpupgrade">HTTP Upgrade</option>
+                            <option value="xhttp">XHTTP</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" type="checkbox" 
+                                   name="network_settings.accept_proxy_protocol" id="acceptProxy">
+                            <label class="form-check-label" for="acceptProxy">
+                                Accept Proxy Protocol
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- JSON Transport Settings Editor -->
+                <div class="mt-4">
+                    <label class="form-label">Transport Settings (JSON)</label>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted">Configure transport-specific settings</small>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="formatJsonBtn">Format JSON</button>
+                            <button type="button" class="btn btn-sm btn-outline-info" id="loadTemplateBtn">Load Template</button>
+                        </div>
+                    </div>
+                    <textarea 
+                        name="network_settings.settings" 
+                        id="networkSettingsEditor" 
+                        class="form-control font-monospace" 
+                        rows="8" 
+                        placeholder='{"path": "/", "host": "example.com"}'
+                        style="resize: vertical; font-size: 0.9em;"
+                    ></textarea>
+                    <div class="form-text">
+                        <span id="jsonValidationStatus" class="text-muted">Valid JSON</span>
+                        <span class="ms-2">|</span>
+                        <a href="#" id="showExamplesLink" class="ms-2">Show Examples</a>
+                    </div>
+                </div>
+                
+                <!-- JSON Examples Collapsible -->
+                <div class="collapse mt-2" id="jsonExamples">
+                    <div class="card card-body bg-light">
+                        <h6>Transport Configuration Examples:</h6>
+                        <div id="transportExamples">
+                            <!-- Examples populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Configuration -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Security Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Security</label>
+                        <select name="security" id="securitySelect" class="form-select" required>
+                            <option value="none">None</option>
+                            <option value="tls">TLS</option>
+                            <option value="reality">Reality</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Certificate Mode</label>
+                        <select name="cert_mode" class="form-select" required>
+                            <option value="none">None</option>
+                            <option value="http">HTTP</option>
+                            <option value="file">File</option>
+                            <option value="dns">DNS</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- TLS Settings JSON Editor -->
+                <div id="tlsSettings" class="protocol-specific mt-4">
+                    <h6>TLS Settings</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted">Configure TLS security settings</small>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="formatTlsJsonBtn">Format JSON</button>
+                            <button type="button" class="btn btn-sm btn-outline-info" id="loadTlsTemplateBtn">Load Template</button>
+                        </div>
+                    </div>
+                    <textarea 
+                        name="security_settings_tls" 
+                        id="tlsSettingsEditor" 
+                        class="form-control font-monospace" 
+                        rows="8" 
+                        placeholder='{"serverName": "example.com", "allowInsecure": false}'
+                        style="resize: vertical; font-size: 0.9em;"
+                    ></textarea>
+                    <div class="form-text">
+                        <span id="tlsJsonValidationStatus" class="text-muted">Valid JSON</span>
+                        <span class="ms-2">|</span>
+                        <a href="#" id="showTlsExamplesLink" class="ms-2">Show Examples</a>
+                    </div>
+                    
+                    <!-- TLS Examples Collapsible -->
+                    <div class="collapse mt-2" id="tlsExamples">
+                        <div class="card card-body bg-light">
+                            <h6>TLS Configuration Examples:</h6>
+                            <div id="tlsExamplesContainer">
+                                <!-- Examples populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reality Settings JSON Editor -->
+                <div id="realitySettings" class="protocol-specific mt-4">
+                    <h6>Reality Settings</h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted">Configure Reality security settings</small>
+                        <div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="formatRealityJsonBtn">Format JSON</button>
+                            <button type="button" class="btn btn-sm btn-outline-info" id="loadRealityTemplateBtn">Load Template</button>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="generateRealityKeysBtn">Generate Keys</button>
+                        </div>
+                    </div>
+                    <textarea 
+                        name="security_settings_reality" 
+                        id="realitySettingsEditor" 
+                        class="form-control font-monospace" 
+                        rows="10" 
+                        placeholder='{"dest": "www.cloudflare.com:443", "privatekey": "", "publickey": ""}'
+                        style="resize: vertical; font-size: 0.9em;"
+                    ></textarea>
+                    <div class="form-text">
+                        <span id="realityJsonValidationStatus" class="text-muted">Valid JSON</span>
+                        <span class="ms-2">|</span>
+                        <a href="#" id="showRealityExamplesLink" class="ms-2">Show Examples</a>
+                    </div>
+                    
+                    <!-- Reality Examples Collapsible -->
+                    <div class="collapse mt-2" id="realityExamples">
+                        <div class="card card-body bg-light">
+                            <h6>Reality Configuration Examples:</h6>
+                            <div id="realityExamplesContainer">
+                                <!-- Examples populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fragment Configuration -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Fragment Configuration</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="fragment" id="fragmentEnabled">
+                            <label class="form-check-label" for="fragmentEnabled">
+                                Enable Fragment
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Fragment Value</label>
+                        <input type="text" name="fragment_value" class="form-control" 
+                               placeholder="e.g., 1,40-60,30-50">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <a href="admin-nodes.html" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save Configuration</button>
+        </div>
+    </form>
+</div>
+
+<script src="assets/third_party/jquery-3.7.1.min.js"></script>
+<script src="assets/third_party/bootstrap-5.3.5/js/bootstrap.bundle.min.js"></script>
+<script src="assets/js/utils.js"></script>
+<!-- Load node-config modules in dependency order -->
+<script src="assets/js/node-config/jsoneditor.js"></script>
+<script src="assets/js/node-config/utils.js"></script>
+<script src="assets/js/node-config/transport.js"></script>
+<script src="assets/js/node-config/security.js"></script>
+<script src="assets/js/node-config/form.js"></script>
+<script src="assets/js/node-config/main.js"></script>
+</body>
+</html>
