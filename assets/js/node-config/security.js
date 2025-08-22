@@ -63,12 +63,14 @@ class SecurityConfigEditor extends JSONEditor {
             const response = await fetch('/v1/generate-reality-keys', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer password'
                 }
             });
             
             if (response.ok) {
                 const keys = await response.json();
+                console.log('API Response:', keys); // Debug log
                 const currentValue = this.editor.value.trim();
                 let config = {};
                 
@@ -76,17 +78,24 @@ class SecurityConfigEditor extends JSONEditor {
                     try {
                         config = JSON.parse(currentValue);
                     } catch (e) {
-                        config = this.templates.reality;
+                        config = {...this.templates.reality};
                     }
                 } else {
                     config = {...this.templates.reality};
                 }
                 
+                // Ensure shortids field exists
+                if (!config.shortids) {
+                    config.shortids = [];
+                }
+                
                 config.privatekey = keys.private_key;
                 config.publickey = keys.public_key;
+                config.shortids = keys.short_ids || [];
                 
+                console.log('Final config:', config); // Debug log
                 this.setValue(config);
-                this.setStatus('✓ Keys generated', 'text-success');
+                this.setStatus('✓ Keys and shortids generated', 'text-success');
             } else {
                 throw new Error('Failed to generate keys');
             }
@@ -121,16 +130,16 @@ class SecurityConfigEditor extends JSONEditor {
             reality: {
                 show: false,
                 dest: "www.cloudflare.com:443",
-                privatekey: "yBaw532IIUNuQWDTncozoBaLJmcd1JZzvsHUgVPxMk8",
+                privatekey: "",
                 minclientver: "",
                 maxclientver: "",
                 maxtimediff: 0,
                 proxyprotocol: 0,
-                shortids: ["6ba85179e30d4fc2"],
+                shortids: [],
                 serverNames: ["www.cloudflare.com"],
                 fingerprint: "chrome",
                 spiderx: "",
-                publickey: "7xhH4b_VkliBxGulljcyPOH-bYUA2dl-XAdZAsfhk04"
+                publickey: ""
             }
         };
     }

@@ -75,7 +75,13 @@ class NodeConfigForm {
     }
     
     loadProtocolOptions() {
-        return $.get('/v1/protocols')
+        return $.ajax({
+            url: '/v1/protocols',
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem("token")}`,
+            }
+        })
             .done((data) => {
                 this.protocolOptions = data;
                 // Populate encryption options for each protocol
@@ -91,7 +97,13 @@ class NodeConfigForm {
     
     loadNodeConfiguration(nodeId) {
         console.log('Loading node configuration for ID:', nodeId);
-        return $.get(`/v1/nodes/${nodeId}/config`)
+        return $.ajax({
+            url: `/v1/nodes/${nodeId}/config`,
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem("token")}`,
+            }
+        })
             .done((node) => {
                 console.log('Node configuration loaded:', node);
                 try {
@@ -123,7 +135,6 @@ class NodeConfigForm {
         $('[name="server_address"]').val(node.server_address || '');
         $('[name="server_ip"]').val(node.server_ip || '');
         $('[name="server_port"]').val(node.server_port || '');
-        $('[name="encryption"]').val(node.encryption || '');
         
         // Network configuration
         $('[name="listening_ip"]').val(node.listening_ip || '0.0.0.0');
@@ -170,6 +181,13 @@ class NodeConfigForm {
         NodeConfigUtils.updateEncryptionOptions($('[name="protocol"]').val(), this.protocolOptions);
         NodeConfigUtils.toggleProtocolSpecificFields($('[name="protocol"]').val());
         NodeConfigUtils.toggleSecuritySettings($('[name="security"]').val());
+        
+        // Set encryption after options are populated (with a small delay to ensure DOM is updated)
+        setTimeout(() => {
+            console.log('Setting encryption to:', node.encryption);
+            $('[name="encryption"]').val(node.encryption || '');
+            console.log('Encryption dropdown value after setting:', $('[name="encryption"]').val());
+        }, 100);
     }
     
     saveNodeConfiguration() {
@@ -251,9 +269,14 @@ class NodeConfigForm {
         $.ajax({
             url: url,
             method: method,
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem("token")}`,
+            },
             contentType: 'application/json',
             data: JSON.stringify(nodeData),
             success: (response) => {
+                // Trigger Xray configuration restart to apply changes immediately
+                this.triggerXrayRestart();
                 alert('Configuration saved successfully!');
                 window.location.href = 'admin-nodes.html';
             },
@@ -261,6 +284,49 @@ class NodeConfigForm {
                 NodeConfigUtils.handleError(jqXHR, (message) => {
                     alert('Failed to save configuration: ' + message);
                 });
+            }
+        });
+    }
+    
+    triggerXrayRestart() {
+        // Trigger Xray configuration restart to apply protocol changes immediately
+        // This endpoint requires admin authentication, so we'll try with admin password
+        
+        // First try to get admin password from settings endpoint
+        $.ajax({
+            url: '/v1/settings',
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem("token")}`,
+            },
+            success: (settings) => {
+                // Try to restart with admin password if available
+                const adminPassword = settings.admin_password || 'password'; // fallback to default
+                this.performXrayRestart(adminPassword);
+            },
+            error: () => {
+                // TODO : REMOVE THIS PART 
+                // If settings call fails, try with default admin password
+                console.log('Could not get admin password from settings, trying with default');
+                this.performXrayRestart('password');
+            }
+        });
+    }
+    
+    performXrayRestart(adminPassword) {
+        $.ajax({
+            url: '/v1/settings/xray/restart',
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${adminPassword}`,
+            },
+            success: () => {
+                console.log('Xray configuration restart triggered successfully');
+            },
+            error: (jqXHR) => {
+                console.warn('Failed to trigger Xray restart:', jqXHR.responseText || jqXHR.statusText || 'Unknown error');
+                // Don't show error to user as this is a background operation
+                // The configuration is still saved, just may not be applied immediately
             }
         });
     }

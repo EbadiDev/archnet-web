@@ -35,13 +35,29 @@ class NodeConfigUtils {
     }
     
     static updateEncryptionOptions(protocol, protocolOptions) {
+        console.log('updateEncryptionOptions called with protocol:', protocol);
         const encryptionSelect = $('#encryptionSelect');
         encryptionSelect.empty().append('<option value="">Select Encryption</option>');
         
-        if (protocolOptions.encryption_options && protocolOptions.encryption_options[protocol]) {
-            protocolOptions.encryption_options[protocol].forEach(function(option) {
+        // Map protocol names to API keys
+        const protocolKeyMap = {
+            'shadowsocks': 'ss',
+            'vmess': 'vmess',
+            'vless': 'vless',
+            'trojan': 'trojan'
+        };
+        
+        const apiKey = protocolKeyMap[protocol] || protocol;
+        console.log('Using API key:', apiKey);
+        
+        if (protocolOptions.encryption_options && protocolOptions.encryption_options[apiKey]) {
+            console.log('Found encryption options:', protocolOptions.encryption_options[apiKey]);
+            protocolOptions.encryption_options[apiKey].forEach(function(option) {
                 encryptionSelect.append(`<option value="${option}">${option}</option>`);
             });
+            console.log('Encryption options populated. Total options:', encryptionSelect.find('option').length);
+        } else {
+            console.log('No encryption options found for protocol:', protocol, 'apiKey:', apiKey);
         }
     }
     
@@ -77,11 +93,21 @@ class NodeConfigUtils {
 
 // Legacy function for backward compatibility
 function generateRealityKeys() {
-    $.post('/v1/generate-reality-keys')
+    $.ajax({
+        url: '/v1/generate-reality-keys',
+        type: 'POST',
+        headers: {
+            'Authorization': 'Bearer password',
+            'Content-Type': 'application/json'
+        }
+    })
         .done(function(data) {
             $('[name="security_settings.reality.private_key"]').val(data.private_key);
             $('[name="security_settings.reality.public_key"]').val(data.public_key);
-            alert('Reality keys generated successfully!');
+            if (data.short_ids && data.short_ids.length > 0) {
+                $('[name="security_settings.reality.short_ids"]').val(JSON.stringify(data.short_ids));
+            }
+            alert('Reality keys and shortids generated successfully!');
         })
         .fail(function() {
             alert('Failed to generate Reality keys');
